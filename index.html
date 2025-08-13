@@ -1,1 +1,609 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Avisværksted – Elevudgave V4 (tjekliste, rubrikpanel, stærkere sprogløft, flersidet avis)</title>
+<style>
+  :root{
+    --ink:#253044; --muted:#7a879a; --bg:#f7f9fc; --paper:#ffffff; --line:#e8edf3;
+    --accent:#e58a7d; --accent-2:#7c91e6; --ok:#2e7d32; --warn:#cf6a2a; --shadow:0 8px 24px rgba(21,37,72,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink);
+    background:radial-gradient(1200px 500px at 10% -20%, #eef3fb 0%, transparent 60%),
+               radial-gradient(900px 400px at 90% -10%, #fdf1ee 0%, transparent 55%),
+               var(--bg);
+  }
+  .top{position:sticky; top:0; z-index:50; background:rgba(255,255,255,.85); backdrop-filter:blur(6px); border-bottom:1px solid var(--line)}
+  .wrap{max-width:1000px; margin:0 auto; padding:14px 18px}
+  .brand{display:flex; align-items:center; gap:12px; justify-content:space-between}
+  .brand-left{display:flex; align-items:center; gap:12px}
+  .logo{font-weight:800; letter-spacing:.2px; font-size:clamp(22px,4vw,32px)}
+  .badge{background:linear-gradient(135deg,#f8a46b,#ec7d55); color:#fff; padding:4px 10px; border-radius:10px; font-weight:700; font-size:12px; box-shadow:var(--shadow)}
 
+  .stepper{display:flex; gap:14px; align-items:center; overflow-x:auto; padding:10px 0}
+  .step{position:relative; display:flex; align-items:center; gap:10px; padding:12px 14px 24px; border-radius:16px; font-weight:700; white-space:nowrap; cursor:pointer;
+    background:linear-gradient(180deg,#fff,#fafcfe); border:1px solid var(--line); box-shadow:0 1px 0 rgba(0,0,0,.02);
+    transition:box-shadow .2s, transform .1s, border-color .2s;}
+  .step svg{width:22px; height:22px}
+  .step:hover{box-shadow:var(--shadow)}
+  .step.active{border-color:var(--accent); box-shadow:0 0 0 4px rgba(229,138,125,.16)}
+  .step.completed{border-color:#bfe3c2; background:linear-gradient(180deg,#ffffff,#f7fbf8)}
+  .step::after{content:""; position:absolute; left:16px; right:16px; bottom:6px; height:6px; border-radius:999px; background:#eaeef7}
+  .step[data-step="s1"]::after{background:#f6c3b4}
+  .step[data-step="s2"]::after{background:#bdc9fb}
+  .step[data-step="s3"]::after{background:#c5ecd3}
+  .step[data-step="s4"]::after{background:#fbe7a2}
+
+  main{max-width:1000px; margin:18px auto 28px; padding:0 18px}
+  .panel{background:var(--paper); border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:var(--shadow)}
+  .panel h2{margin:0 0 6px; font-size:clamp(18px,2.6vw,26px)}
+  .sub{color:var(--muted); margin:0 0 12px; font-size:14px}
+  .grid{display:grid; grid-template-columns:1fr; gap:16px}
+  @media(min-width:900px){.grid{grid-template-columns:1.1fr .9fr}}
+  label{font-weight:800; display:block; margin:6px 0}
+  .field{display:flex; gap:10px; align-items:center}
+  input[type=text], textarea, select{flex:1; width:100%; padding:14px; border:1px solid var(--line); border-radius:14px; font:inherit; background:#fff; box-shadow:inset 0 1px 0 rgba(0,0,0,.02)}
+  input:focus, textarea:focus, select:focus{outline:none; border-color:#cfd9f2; box-shadow:0 0 0 4px rgba(124,145,230,.15)}
+  textarea{min-height:120px}
+  .btn{appearance:none; border:none; background:var(--accent); color:#fff; padding:13px 18px; border-radius:16px; font-weight:800; cursor:pointer; transition:transform .1s, filter .2s, box-shadow .2s; box-shadow:0 6px 16px rgba(236,132,109,.25)}
+  .btn:hover{filter:saturate(1.03); box-shadow:0 10px 24px rgba(236,132,109,.28)}
+  .btn.alt{background:var(--accent-2); box-shadow:0 6px 16px rgba(124,145,230,.25)}
+  .btn.ghost{background:#fff; color:var(--ink); border:1px solid var(--line); box-shadow:none}
+  .btn.big{font-size:18px; padding:16px 22px; border-radius:18px}
+  .seg{display:inline-flex; gap:2px; background:#eef2ff; border:1px solid #dbe3ff; padding:4px; border-radius:12px}
+  .seg button{background:#fff; border:1px solid #dbe3ff; padding:8px 10px; border-radius:10px; font-weight:700; cursor:pointer}
+  .seg button[aria-pressed="true"]{background:#7c91e6; border-color:#7c91e6; color:#fff}
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap}
+  .big-next{display:flex; justify-content:center; margin-top:14px}
+  .help{background:#fff8e7; border:1px solid #ffe1b3; border-radius:12px; padding:12px; font-size:14px}
+  .toast{position:fixed; right:18px; bottom:18px; background:#2b6adf; color:#fff; padding:10px 14px; border-radius:12px; font-weight:700; box-shadow:var(--shadow); opacity:0; transform:translateY(10px); transition:.25s}
+  .toast.show{opacity:1; transform:translateY(0)}
+  .hint{font-size:13px; color:var(--muted)}
+  .icons{display:flex; gap:8px}
+  .icon-btn{width:44px; height:44px; border:1px solid var(--line); border-radius:12px; background:#fff; cursor:pointer; display:grid; place-items:center; font-size:18px; box-shadow:0 1px 0 rgba(0,0,0,.02)}
+  .icon-btn:active{transform:scale(.98)}
+
+  .notice{background:#fff8e7; border:1px solid #ffe1b3; border-radius:12px; padding:10px; font-size:14px}
+  .output{white-space:pre-wrap; background:#f0f5ff; border:1px dashed #cbd5e1; padding:12px; border-radius:10px; min-height:60px}
+
+  @media print{ header, .no-print{display:none!important} .print-only{display:block} }
+  .print-only{display:none}
+
+  /* Rubrikforslag */
+  .ideas{background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px}
+  .ideas h3{margin:0 0 6px; font-size:16px}
+  .ideas ul{list-style:none; margin:0; padding:0}
+  .ideas li{padding:8px 10px; border:1px solid var(--line); border-radius:10px; margin-bottom:6px; cursor:pointer}
+  .ideas li:hover{box-shadow:var(--shadow)}
+
+  /* Avis-samling */
+  .assemble-bar{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+</style>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <div class="brand">
+        <div class="brand-left">
+          <div class="logo">AVISVÆRKSTEDET</div>
+          <div class="badge">ELEVUDGAVE</div>
+        </div>
+        <div class="brand-right">
+          <button class="btn ghost" id="saveBtn" title="Gem i denne browser">💾 Gem kladde</button>
+        </div>
+      </div>
+      <nav class="stepper" id="stepper">
+        <div class="step active" data-step="s1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 3 2 5 4 6v3h6v-3c2-1 4-3 4-6a7 7 0 0 0-7-7z"/></svg><span>Idé</span></div>
+        <div class="step" data-step="s2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>Research</span></div>
+        <div class="step" data-step="s3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg><span>Skriv</span></div>
+        <div class="step" data-step="s4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg><span>Redigér & avisside</span></div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="no-print">
+    <!-- S1: Idé -->
+    <section id="s1" class="panel">
+      <h2>Fase 1 · Idé & vinkel</h2>
+      <p class="sub">Find først emne og vinkel. Lav derefter arbejdsark til research.</p>
+      <div class="grid">
+        <div>
+          <label>Artikeltype</label>
+          <select id="type">
+            <option value="nyhed">Nyhed</option>
+            <option value="reportage">Reportage</option>
+            <option value="interview">Interview</option>
+            <option value="feature">Feature</option>
+            <option value="debat">Holdningsindlæg</option>
+            <option value="ugen-der-gik">AVIS: Ugen der gik</option>
+            <option value="naeste-uge">AVIS: Næste uge</option>
+          </select>
+
+          <label>Emne</label>
+          <div class="field">
+            <input id="idea" type="text" placeholder="Fx: Kantinen skifter menu" />
+            <div class="icons">
+              <button class="icon-btn" title="Læs op" data-read="idea">🔊</button>
+              <button class="icon-btn" title="Indtal" data-dictate="idea">🎤</button>
+            </div>
+          </div>
+
+          <label>Vinkel eller spørgsmål</label>
+          <div class="field">
+            <input id="angle" type="text" placeholder="Fx: Flere vegetarretter efter elevønske" />
+            <div class="icons">
+              <button class="icon-btn" title="Læs op" data-read="angle">🔊</button>
+              <button class="icon-btn" title="Indtal" data-dictate="angle">🎤</button>
+            </div>
+          </div>
+
+          <div class="toolbar" style="margin-top:10px">
+            <button class="btn alt" id="ideaHelp">💡 Idé‑hjælp</button>
+            <button class="btn ghost" id="worksheet">🖨️ Lav arbejdsark</button>
+            <button class="btn" id="toS2">Videre til research</button>
+          </div>
+        </div>
+        <aside>
+          <div class="help">
+            <strong>Sådan arbejder vi:</strong>
+            <ul style="margin:8px 0 0 18px; padding:0">
+              <li>I finder idé og vinkel</li>
+              <li>I laver ALT research (interviews, fakta, citater)</li>
+              <li>AI hjælper kun med at formulere</li>
+            </ul>
+          </div>
+          <p class="hint">Tip: Brug arbejdsarket og tag det med til interviews.</p>
+        </aside>
+      </div>
+      <div class="big-next">
+        <button class="btn big" id="startBtn">🚀 Start din artikel</button>
+      </div>
+    </section>
+
+    <!-- S2: Research (med tjekbokse) -->
+    <section id="s2" class="panel" style="display:none">
+      <h2>Fase 2 · Research & interviews</h2>
+      <p class="sub">Lav interviews, noter citater ordret, og saml fakta. Sæt ✔ når I er klar.</p>
+      <div class="grid">
+        <div>
+          <div class="notice">
+            <label><input type="checkbox" class="rcb" data-key="kilder"> Mindst 2 kilder interviewet</label><br>
+            <label><input type="checkbox" class="rcb" data-key="fakta"> Fakta: hvad/hvor/hvornår/hvem</label><br>
+            <label><input type="checkbox" class="rcb" data-key="citater"> Citater ordret + navn/rolle</label><br>
+            <label><input type="checkbox" class="rcb" data-key="obs"> Observationer/indtryk noteret</label><br>
+            <label><input type="checkbox" class="rcb" data-key="billede"> Billede‑idé eller foto</label>
+          </div>
+          <div class="toolbar" style="margin-top:10px">
+            <button class="btn" id="reopenWS">📗 Åbn arbejdsark igen</button>
+            <button class="btn ghost" data-goto="s3" id="toS3">Videre til skriv</button>
+          </div>
+          <p class="hint" id="rStatus"></p>
+        </div>
+        <aside>
+          <div class="help">
+            Markér punkterne efterhånden som de er på plads. Du kan altid vende tilbage og ændre.
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- S3: Skriv + rubrikpanel -->
+    <section id="s3" class="panel" style="display:none">
+      <h2>Fase 3 · Indtast research → AI formulerer</h2>
+      <div class="grid">
+        <div>
+          <label>Fakta</label>
+          <textarea id="facts" placeholder="Datoer, tal, navne, beslutninger..."></textarea>
+          <label>Citater (ordret + hvem)</label>
+          <textarea id="quotes" placeholder='"Det her sagde personen" – Navn, rolle'></textarea>
+          <label>Detaljer/observationer</label>
+          <textarea id="details" placeholder="Stikord er fint – AI laver hele sætninger"></textarea>
+          <div class="toolbar" style="margin-top:10px">
+            <button class="btn alt" id="gen">🤖 Formulér artikel</button>
+            <button class="btn ghost" id="journal">📰 Journalistik‑tjek</button>
+          </div>
+        </div>
+        <aside>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px">
+            <label style="margin:0">Sproghjælp (trip, trap, træsko)</label>
+            <div class="seg" role="group" aria-label="Sproghjælp">
+              <button id="lvlOff" aria-pressed="true">Ingen</button>
+              <button id="lvlLight" aria-pressed="false">Let</button>
+              <button id="lvlMore" aria-pressed="false">Mere</button>
+            </div>
+          </div>
+          <div class="hint" style="margin:6px 0 8px">Udvider stikord til hele sætninger. Citater ændres kun i stavning.</div>
+          <label>Udkast</label>
+          <div id="draftDisplay" class="output">(AI sætter jeres artikel her)</div>
+          <div class="toolbar" style="margin-top:8px">
+            <button class="btn" id="applyLift">Anvend sproghjælp</button>
+          </div>
+
+          <div class="ideas" style="margin-top:10px">
+            <h3>Rubrikforslag</h3>
+            <ul id="headlineIdeas"></ul>
+          </div>
+
+          <label style="margin-top:10px">Sprogløftet version</label>
+          <div id="liftedDisplay" class="output">(Vist her, når sproghjælp anvendes)</div>
+          <div class="toolbar" style="margin-top:8px">
+            <button class="btn ghost" id="copyLift">Overfør til brødtekst</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- S4: Redigér & saml avisside -->
+    <section id="s4" class="panel" style="display:none">
+      <h2>Fase 4 · Redigering & avisside</h2>
+      <div class="grid">
+        <div>
+          <label>Rubrik</label>
+          <input id="headline" type="text" placeholder="Skriv/vælg rubrik">
+          <label>Underrubrik</label>
+          <textarea id="sub" placeholder="Kort opsummering..." style="min-height:70px"></textarea>
+          <label>Brødtekst</label>
+          <textarea id="body" placeholder="Redigér teksten så den bliver præcis som I vil have den" style="min-height:220px"></textarea>
+
+          <label>Billeder (valgfrit)</label>
+          <div class="notice">
+            <input type="file" id="imageUpload" accept="image/*" multiple>
+            <div class="hint">JPG/PNG · max 5 MB per billede</div>
+            <div id="imgMsg" class="hint" style="display:none; color:var(--ok); margin-top:6px">Billede tilføjet ✔</div>
+          </div>
+          <div id="imagePreview" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+
+          <div class="assemble-bar" style="margin-top:10px">
+            <button class="btn alt" id="addToPage">➕ Tilføj til avisside</button>
+            <button class="btn ghost" id="viewPage">📰 Vis avisside</button>
+            <button class="btn ghost" id="clearPage">🧹 Ryd avisside</button>
+            <button class="btn" id="print">🖨️ Print/Gem som PDF</button>
+          </div>
+          <p class="hint" id="pageInfo"></p>
+        </div>
+        <aside>
+          <div id="ready" class="output"></div>
+          <div class="hint" id="stats" style="margin-top:8px"></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <!-- Avisside til print (flere artikler) -->
+  <div id="newspaper" class="print-only" style="display:none;margin:0 auto;max-width:900px;padding:12mm">
+    <div style="border-bottom:3px double #000; padding-bottom:10px; margin-bottom:20px; text-align:center">
+      <div style="font-size:28px; font-weight:800; letter-spacing:3px">SKOLE AVISEN</div>
+      <div id="newsDate" style="font-size:13px; color:#555; margin-top:4px"></div>
+    </div>
+    <div id="newsContent"></div>
+  </div>
+
+  <div class="toast" id="toast">Avisværksted indlæst ✨</div>
+
+<script>
+(function(){
+  // --- STATE ---
+  const state = { current:'s1', data:{}, images:[], usedAI:false, lastWorksheet:null, speaking:false, liftLevel:'off',
+                  research:{kilder:false,fakta:false,citater:false,obs:false,billede:false},
+                  pageArticles:[] };
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+  // --- TOAST ---
+  const toast = $('#toast');
+  function showToast(msg){ if(!toast) return; toast.textContent=msg; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 2200); }
+  showToast('Klar! Udfyld Emne og Vinkel, og klik Videre.');
+
+  // --- NAVIGATION ---
+  function goToStep(id){
+    ['s1','s2','s3','s4'].forEach(s=>{ const el = $('#'+s); if(el) el.style.display = (s===id)?'block':'none'; });
+    const steps = $$('#stepper .step');
+    steps.forEach(st=>{
+      const active = st.getAttribute('data-step')===id;
+      st.classList.toggle('active', active);
+      const idx = ['s1','s2','s3','s4'].indexOf(st.getAttribute('data-step'));
+      const dest = ['s1','s2','s3','s4'].indexOf(id);
+      st.classList.toggle('completed', idx < dest);
+    });
+    state.current = id; window.scrollTo({top:0, behavior:'smooth'}); saveFormData();
+  }
+  $$('#stepper .step[data-step]').forEach(el=> el.addEventListener('click', ()=> goToStep(el.getAttribute('data-step'))));
+  function proceedFromS1(){
+    const idea = $('#idea').value.trim(); const angle = $('#angle').value.trim();
+    if(!idea || !angle) return showToast('Udfyld Emne og Vinkel først');
+    goToStep('s2');
+  }
+  $('#toS2')?.addEventListener('click', proceedFromS1);
+  $('#startBtn')?.addEventListener('click', proceedFromS1);
+  $('[data-goto="s3"]')?.addEventListener('click', ()=> goToStep('s3'));
+
+  // --- SAVE/LOAD ---
+  function saveFormData(){
+    ['idea','angle','type','facts','quotes','details','headline','sub','body'].forEach(id=>{ const el = $('#'+id); if(el) state.data[id] = el.value; });
+    const dd = $('#draftDisplay'); if(dd) state.data.draftText = dd.textContent || dd.innerText || '';
+    localStorage.setItem('avis_draft', JSON.stringify(state.data));
+    localStorage.setItem('avis_research', JSON.stringify(state.research));
+    localStorage.setItem('avis_page', JSON.stringify(state.pageArticles));
+  }
+  function loadFormData(){
+    try{ state.data = JSON.parse(localStorage.getItem('avis_draft'))||{}; }catch(e){}
+    try{ state.research = Object.assign(state.research, JSON.parse(localStorage.getItem('avis_research'))||{}); }catch(e){}
+    try{ state.pageArticles = JSON.parse(localStorage.getItem('avis_page'))||[]; }catch(e){}
+    const d = state.data; if(d){
+      ['idea','angle','type','facts','quotes','details','headline','sub','body'].forEach(id=>{ const el = $('#'+id); if(el && d[id]) el.value = d[id]; });
+      const dd = $('#draftDisplay'); if(dd && d.draftText) dd.textContent = d.draftText;
+    }
+    // apply research checkboxes
+    $$('.rcb').forEach(cb=>{ const k=cb.getAttribute('data-key'); cb.checked = !!state.research[k]; });
+    updateResearchStatus();
+    updatePageInfo();
+  }
+  $('#saveBtn')?.addEventListener('click', ()=>{ saveFormData(); showToast('Kladde gemt i denne browser'); });
+
+  // --- Research checkboxes ---
+  function updateResearchStatus(){
+    const vals = Object.values(state.research); const done = vals.filter(Boolean).length;
+    $('#rStatus').textContent = `Tjekliste: ${done}/5 udført`;
+    $('#toS3')?.setAttribute('disabled', done<3 ? 'true' : '');
+    if(done>=3) $('#toS3')?.removeAttribute('disabled');
+  }
+  $$('.rcb').forEach(cb=>{
+    cb.addEventListener('change', ()=>{ const k=cb.getAttribute('data-key'); state.research[k]=cb.checked; updateResearchStatus(); saveFormData(); });
+  });
+
+  // --- SPEAK / DICTATE ---
+  $$('[data-read]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const id = btn.getAttribute('data-read'); const el = $('#'+id); const text = el? el.value: '';
+    if(!text) return showToast('Ingen tekst at læse op');
+    if('speechSynthesis' in window){ const u = new SpeechSynthesisUtterance(text); u.lang='da-DK'; u.rate=.95; speechSynthesis.speak(u); } else alert(text);
+  }));
+  $$('[data-dictate]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const id = btn.getAttribute('data-dictate'); const el = $('#'+id);
+    const SR = window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return showToast('Tale‑genkendelse kræver Chrome');
+    const rec = new SR(); rec.lang='da-DK'; rec.onresult=e=>{ el.value += (el.value?' ':'') + e.results[0][0].transcript; saveFormData(); }; rec.start();
+  }));
+
+  // --- IDE HELP ---
+  $('#ideaHelp')?.addEventListener('click', ()=>{
+    const type = $('#type').value; const bank = {
+      'nyhed':'Nye tiltag på skolen · ændrede regler · kommende events',
+      'reportage':'En dag i kantinen · bag kulisserne · i pedelværkstedet',
+      'interview':'Ny lærer · elev med særlig hobby · kantineleder',
+      'feature':'Skolens historie · miljøtiltag · teknologi i undervisningen',
+      'debat':'Mobilregler · lektiecafé · skoleuniform – for/imod?',
+      'ugen-der-gik':'Prøver · sportsdag · udflugter · fejringer',
+      'naeste-uge':'Events · deadlines · forberedelser til ture'
+    };
+    alert('💡 Idéer til '+type+':\n\n• '+(bank[type]||'Se jer omkring og vælg noget tæt på jer.'));
+  });
+
+  // --- WORKSHEET ---
+  function openWorksheet(){
+    const idea = ($('#idea').value||'Din artikel').toUpperCase();
+    const angle = $('#angle').value||'Din vinkel';
+    const type = $('#type').value;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Arbejdsark</title>
+    <style>body{font-family:Arial,Helvetica,sans-serif; margin:15mm; line-height:1.5}h1{margin:0 0 6px} .hdr{border-bottom:2px solid #333; padding-bottom:8px; margin-bottom:12px} .sec{border:1px solid #ccc; padding:8px; margin:10px 0} .notes{min-height:40px; border-bottom:1px dotted #999; margin:4px 0} .small{font-size:12px; color:#666}</style></head><body>
+    <div class="hdr"><h1>📰 ARBEJDSARK: ${idea}</h1><div class="small"><b>Type:</b> ${type} · <b>Vinkel:</b> ${angle} · Dato: ______ · Reporter: __________</div></div>
+    <div class="sec"><b>Plan (kilder & spørgsmål)</b><div class="notes"></div><div class="notes"></div></div>
+    <div class="sec"><b>Fakta (hvad/hvor/hvornår/hvem)</b><div class="notes"></div><div class="notes"></div></div>
+    <div class="sec"><b>Citater (ordret + navn)</b><div class="notes"></div><div class="notes"></div></div>
+    <div class="sec"><b>Observationer</b><div class="notes"></div></div>
+    <div class="sec"><b>Tjek</b> □ 2+ kilder □ Fakta verificeret □ Citater ordret □ Navne korrekte</div>
+    </body></html>`;
+    const w = window.open('', '_blank'); if(w){ w.document.write(html); w.document.close(); state.lastWorksheet = html; }
+  }
+  $('#worksheet')?.addEventListener('click', openWorksheet);
+  $('#reopenWS')?.addEventListener('click', ()=>{ if(state.lastWorksheet){ const w=window.open('', '_blank'); if(w){ w.document.write(state.lastWorksheet); w.document.close(); } } else showToast('Lav først et arbejdsark i fase 1'); });
+
+  // --- ARTICLE GENERATION (SIM) ---
+  function createSimpleArticle(d){
+    let a='';
+    if(d.type==='ugen-der-gik'){ a += 'Ugen der gik bød på '+(d.idea||'flere begivenheder')+'.'; if(d.angle) a+=' '+d.angle+'.'; a+='\n\n'; }
+    else if(d.type==='naeste-uge'){ a += (d.angle||d.idea||'Kommende begivenheder')+'\n\n'; }
+    else { a += (d.angle||d.idea||'')+'\n\n'; }
+    if(d.facts){ let f=d.facts.replace(/\s+/g,' ').trim(); if(f && !/[.!?]$/.test(f)) f+='.'; a+=f+'\n\n'; }
+    if(d.quotes){ d.quotes.split('\n').map(s=>s.trim()).filter(s=>s.length>2).forEach(line=>{ if(!/["']/.test(line)) line='"'+line+'"'; if(!/[.!?]["']?$/.test(line)) line=line.replace(/["']?$/,'.$&'); a+=line+'\n\n'; }); }
+    if(d.details){ let det=d.details.replace(/\s+/g,' ').trim(); if(det && !/[.!?]$/.test(det)) det+='.'; a+=det+'\n\n'; }
+    if(d.type==='ugen-der-gik') a+='Det var ugen der gik.';
+    return a.replace(/\n\n\n+/g,'\n\n').trim();
+  }
+  $('#gen')?.addEventListener('click', ()=>{
+    const facts=$('#facts').value.trim(), quotes=$('#quotes').value.trim(), details=$('#details').value.trim();
+    if(!facts && !quotes && !details) return showToast('Indtast jeres research først');
+    const article = createSimpleArticle({ type:$('#type').value, idea:$('#idea').value.trim(), angle:$('#angle').value.trim(), facts, quotes, details });
+    $('#draftDisplay').textContent = article; $('#body').value = article; state.usedAI=true; saveFormData();
+    // auto-generate headline ideas on draft
+    makeHeadlineIdeas();
+    showToast('Udkast klar!');
+  });
+
+  // --- Rubrikforslag panel ---
+  function makeHeadlineIdeas(){
+    const idea=$('#idea').value||'Artikel'; const angle=$('#angle').value||''; const type=$('#type').value;
+    const bases=[ angle, idea+': '+angle, 'Nyt på skolen: '+angle, angle+' skaber debat', 'Eleverne om '+idea.toLowerCase() ];
+    const ul=$('#headlineIdeas'); if(!ul) return; ul.innerHTML='';
+    bases.filter(Boolean).forEach(txt=>{ const li=document.createElement('li'); li.textContent=txt; li.addEventListener('click',()=>{ $('#headline').value=txt; showToast('Rubrik valgt');}); ul.appendChild(li); });
+  }
+
+  $('#journal')?.addEventListener('click', ()=>{
+    const lines=[ '📰 JOURNALISTIK‑TJEK:', '', '✅ Er alle påstande understøttet af jeres research?', '✅ Har I citater, der bakker konklusioner op?', '❌ Undgå ord som "alle", "mange", "positive" uden dokumentation.', '📌 Tjek navn, rolle, sted og tidspunkt i alle fakta.', '📷 Overvej billedidé: hvem/hvad viser motivet?' ];
+    alert(lines.join('\n')); showToast('Journalistik‑tjek vist');
+  });
+
+  // --- LANGUAGE LIFT (Sproghjælp) ---
+  const lvlButtons = { off: $('#lvlOff'), light: $('#lvlLight'), more: $('#lvlMore') };
+  function setLiftLevel(level){
+    state.liftLevel = level; localStorage.setItem('avis_lift', level);
+    Object.entries(lvlButtons).forEach(([k,btn])=> btn?.setAttribute('aria-pressed', String(k===level)));
+  }
+  setLiftLevel(localStorage.getItem('avis_lift')||'off');
+  lvlButtons.off?.addEventListener('click', ()=> setLiftLevel('off'));
+  lvlButtons.light?.addEventListener('click', ()=> setLiftLevel('light'));
+  lvlButtons.more?.addEventListener('click', ()=> setLiftLevel('more'));
+
+  function normalize(txt){
+    return (txt||'')
+      .replace(/\r/g,'')
+      .replace(/\s+/g,' ')
+      .replace(/\s([,.;:!?])/g,'$1')
+      .replace(/\s+—\s+/g,' – ')
+      .trim();
+  }
+  function sentenceSplit(txt){
+    return (txt||'')
+      .replace(/(?<=\S)\s*(\n|\r)+\s*/g,' ') // linjeskift til mellemrum
+      .split(/(?<=[.!?])\s+(?=[A-ZÆØÅ])/);
+  }
+  const replacementsBase = [
+    [/ mega /gi,' meget '],
+    [/ nice /gi,' godt '],
+    [/ vildt /gi,' meget '],
+    [/ sådan lidt /gi,' lidt '],
+    [/ ik\b/gi,' ikke'],
+    [/ oss\b/gi,' også'],
+    [/ ku\b/gi,' kunne']
+  ];
+  const replacementsMore = [
+    [/\bman\b/gi,'eleverne'],
+    [/\bbare\b/gi,''],
+    [/\begentlig\b/gi,'']
+  ];
+  function polishQuotes(s){
+    return s.replace(/\“|\”/g,'"').replace(/\s*–\s*/g,' – ').replace(/\s*—\s*/g,' – ').replace(/\s+([.!?])\s*$/,'$1');
+  }
+  function ensurePeriod(s){ return /[.!?]$/.test(s)? s : s + '.'; }
+
+  // Udvid stikord → sætninger (uden at ændre citater)
+  function expandFragments(text){
+    const bits = text.split(/\n|·|•|\u2022|;|, /).map(s=>s.trim()).filter(Boolean);
+    const bridges = ['Derfor','Samtidig','Desuden','Kort efter','I praksis','Ifølge skolen'];
+    return bits.map((b,i)=>{
+      if(!b) return '';
+      if(/^".+"/.test(b)) return b; // citat, bevar
+      let s = b;
+      if(!/[.!?]$/.test(s)) s = s.charAt(0).toUpperCase()+s.slice(1) + (i%3===0? ' – '+bridges[i%bridges.length].toLowerCase()+' ':' ');
+      if(!/\b(er|blev|har|skal|kommer|planlægger|indfører|udvider)\b/i.test(s)){
+        s = s.replace(/^(\w+)/, '$1');
+        s = s + ' sker på skolen, oplyser elever og lærere.';
+      }
+      return ensurePeriod(s.trim());
+    }).join(' ');
+  }
+
+  function liftText(text, level){
+    if(level==='off') return text;
+    // Beskyt citater: split ud og behandl kun udenfor
+    const parts = [];
+    text.split(/("[^"]+"|“[^”]+”)/).forEach(seg=>{
+      if(/^"|“/.test(seg)) parts.push({type:'quote', val:seg}); else parts.push({type:'plain', val:seg});
+    });
+
+    let rebuilt = parts.map(p=>{
+      if(p.type==='quote'){
+        // kun stavning/typografi
+        return polishQuotes(p.val);
+      } else {
+        let t = ' ' + normalize(p.val) + ' ';
+        replacementsBase.forEach(([re, val])=> t = t.replace(re, ' '+val+' '));
+        if(level==='more'){ t = replacementsMore.reduce((acc,[re,val])=> acc.replace(re,val), t); }
+        // Udvid stikord i "more" niveau
+        if(level==='more') t = expandFragments(t);
+        // Let niveau: kun sætningsting
+        if(level==='light'){
+          t = sentenceSplit(t).map(s=> polishQuotes(ensurePeriod(s.trim()))).join(' ');
+        }
+        return t;
+      }
+    }).join(' ');
+
+    // Ryd dobbelt mellemrum og punktummer
+    rebuilt = rebuilt.replace(/\s+/g,' ').replace(/\.\./g,'.').trim();
+    // Tilføj blid intro/afslutning ved "more"
+    if(level==='more'){
+      const idea = $('#idea').value.trim(); const angle=$('#angle').value.trim();
+      if(idea && !rebuilt.toLowerCase().startsWith(idea.toLowerCase())){
+        rebuilt = `${idea}: ${rebuilt}`;
+      }
+      if(!/[.!?]$/.test(rebuilt)) rebuilt += '.';
+      rebuilt += ' Afslutningsvis peger eleverne på, at tiltaget skal evalueres efter et par uger.';
+    }
+    return rebuilt;
+  }
+
+  $('#applyLift')?.addEventListener('click', ()=>{
+    const src = $('#draftDisplay').textContent || '';
+    if(!src.trim()) return showToast('Lav først et udkast');
+    const lifted = liftText(src, state.liftLevel);
+    $('#liftedDisplay').textContent = lifted;
+    showToast(state.liftLevel==='off' ? 'Sproghjælp er slået fra' : 'Sprogløft anvendt');
+  });
+  $('#copyLift')?.addEventListener('click', ()=>{
+    const lifted = $('#liftedDisplay').textContent||'';
+    if(!lifted.trim()) return showToast('Ingen sprogløftet tekst at kopiere');
+    $('#body').value = lifted; showToast('Kopieret til brødtekst');
+  });
+
+  // --- IMAGES ---
+  function updateImagePreview(){ const wrap = $('#imagePreview'); if(!wrap) return; wrap.innerHTML=''; state.images.forEach((img,i)=>{ const d=document.createElement('div'); d.style.cssText='position:relative'; d.innerHTML = `<img src="${img.data}" alt="${img.name}" style="width:120px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--line)">`+
+      `<button title="Fjern" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border:0;border-radius:50%;background:#e25c47;color:#fff;cursor:pointer">×</button>`;
+      d.querySelector('button').onclick=()=>{ state.images.splice(i,1); updateImagePreview(); };
+      wrap.appendChild(d);
+    });
+  }
+  function handleImageUpload(input){ if(!input.files) return; Array.from(input.files).forEach(file=>{ if(file.type.startsWith('image/') && file.size < 5*1024*1024){ const r=new FileReader(); r.onload=e=>{ state.images.push({name:file.name,data:e.target.result}); updateImagePreview(); const msg=$('#imgMsg'); if(msg){ msg.style.display='block'; setTimeout(()=> msg.style.display='none', 1500);} }; r.readAsDataURL(file);} else showToast('For stort/ukendt format: '+file.name); }); input.value=''; }
+  $('#imageUpload')?.addEventListener('change', function(){ handleImageUpload(this); });
+
+  // --- CHECK / PAGE ASSEMBLY / PRINT ---
+  $('#check')?.addEventListener('click', ()=>{
+    const h=($('#headline').value||'').trim(), b=($('#body').value||'').trim();
+    const wc = b? b.split(/\s+/).filter(Boolean).length: 0; const status=[];
+    status.push(h? '✅ Rubrik':'❌ Mangler rubrik');
+    status.push(wc>60? '✅ Brødtekst ('+wc+' ord)':'ℹ️ Overvej at skrive mere (min. ~60 ord)');
+    status.push(state.images.length? '✅ Billeder ('+state.images.length+')':'⚠️ Ingen billeder');
+    if(state.usedAI) status.push('✨ AI har formuleret udkast');
+    $('#ready').textContent = status.join('\n'); $('#stats').textContent = 'Ord: '+wc+' | Tegn: '+b.length; showToast('Artikel tjekket');
+  });
+
+  function renderNewspaper(){
+    const date = new Date().toLocaleDateString('da-DK',{ weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    $('#newsDate').textContent = date;
+    const blocks = state.pageArticles.map(a=>{
+      const imgHTML = a.image? `<div style="text-align:center;margin:8px 0"><img src="${a.image}" style="max-width:220px;border:1px solid #ccc"></div>` : '';
+      return `<article style="break-inside:avoid; margin-bottom:14px">
+        <h2 style="font-size:18px; margin:0 0 4px">${a.headline||'Uden rubrik'}</h2>
+        ${a.sub? `<div style="font-style:italic;color:#444;margin-bottom:6px">${a.sub}</div>`:''}
+        ${imgHTML}
+        <div style="font-size:13.5px; line-height:1.7; text-align:justify">${(a.body||'').replace(/\n/g,'<br><br>')}</div>
+      </article>`;
+    }).join('');
+    const layout = `<div style="column-count:2; column-gap:18mm">${blocks}</div>`;
+    $('#newsContent').innerHTML = layout; $('#newspaper').style.display='block';
+  }
+
+  function updatePageInfo(){ $('#pageInfo').textContent = `Artikler på avissiden: ${state.pageArticles.length}`; }
+
+  $('#addToPage')?.addEventListener('click', ()=>{
+    const a = { headline:$('#headline').value.trim(), sub:$('#sub').value.trim(), body:$('#body').value.trim(), image: (state.images[0]?.data||null) };
+    if(!a.headline || !a.body) return showToast('Rubrik og brødtekst skal udfyldes');
+    state.pageArticles.push(a); saveFormData(); updatePageInfo(); showToast('Tilføjet til avisside');
+  });
+  $('#viewPage')?.addEventListener('click', ()=>{ if(!state.pageArticles.length) return showToast('Ingen artikler på avissiden endnu'); renderNewspaper(); window.scrollTo({top:0, behavior:'smooth'}); });
+  $('#clearPage')?.addEventListener('click', ()=>{ if(confirm('Ryd hele avissiden?')){ state.pageArticles=[]; saveFormData(); updatePageInfo(); showToast('Avisside ryddet'); }});
+  $('#print')?.addEventListener('click', ()=>{ if(!state.pageArticles.length){ // hvis kun én artikel, vis den
+      const single = { headline:$('#headline').value.trim(), sub:$('#sub').value.trim(), body:$('#body').value.trim(), image:(state.images[0]?.data||null) };
+      state.pageArticles = single.headline && single.body ? [single] : state.pageArticles;
+    }
+    renderNewspaper(); window.print();
+  });
+
+  // --- INIT ---
+  document.addEventListener('visibilitychange', saveFormData);
+  setInterval(saveFormData, 7000);
+  loadFormData();
+})();
+</script>
+</body>
+</html>
